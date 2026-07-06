@@ -1,0 +1,38 @@
+name: smartcare
+description: DUFUTH SmartCare hospital appointment management mobile app.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cloud_firestore: ^5.6.12
+  cupertino_icons: ^1.0.8
+  firebase_auth: ^5.7.0
+  firebase_core: ^3.15.2
+  firebase_messaging: ^15.2.10
+  flutter_riverpod: ^2.6.1
+  go_router: ^16.0.0
+  http: ^1.2.2
+  shared_preferences: ^2.5.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/admin/
+    - assets/auth/
+    - assets/branding/
+    - assets/doctor_nav/
+    - assets/hospital_info/
+    - assets/home/
+    - assets/nav/
+    - assets/onboarding/
+    - assets/profile/

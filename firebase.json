@@ -1,0 +1,24 @@
+{
+  "firestore": {
+    "indexes": "firestore.indexes.json"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "dufuth2",
+          "appId": "1:1048065806313:android:4c93cb32a71a7aa02f0578",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "dufuth2",
+          "configurations": {
+            "android": "1:1048065806313:android:4c93cb32a71a7aa02f0578"
+          }
+        }
+      }
+    }
+  }
+}

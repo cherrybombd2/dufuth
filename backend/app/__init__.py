@@ -1,0 +1,1 @@
+"""DUFUTH SmartCare backend package."""
