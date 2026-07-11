@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +10,7 @@ import '../../auth/domain/app_session.dart';
 import '../../auth/presentation/auth_ui.dart';
 import '../../appointments/data/patient_appointments_repository.dart';
 import '../../appointments/presentation/patient_appointments_screen.dart';
+import '../../booking/data/booking_repository.dart';
 import '../../faq/presentation/faq_screen.dart';
 import '../../profile/presentation/profile_screen.dart';
 import '../data/doctor_workspace_repository.dart';
@@ -27,6 +30,15 @@ class _PatientWorkspaceScreenState
   int _currentIndex = 0;
   int _appointmentRefreshToken = 0;
   int _appointmentsTabRefreshToken = 0;
+  bool _isPrefetchingBookingData = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _prefetchBookingReferenceData();
+    });
+  }
 
   void _refreshAppointments() {
     setState(() {
@@ -36,10 +48,29 @@ class _PatientWorkspaceScreenState
   }
 
   void _openAppointmentsTab() {
+    _prefetchBookingReferenceData();
     setState(() {
       _currentIndex = 1;
       _appointmentsTabRefreshToken++;
     });
+  }
+
+  void _prefetchBookingReferenceData() {
+    if (_isPrefetchingBookingData) {
+      return;
+    }
+    final repository = ref.read(bookingRepositoryProvider);
+    if (repository.hasFreshCachedData) {
+      return;
+    }
+    _isPrefetchingBookingData = true;
+    unawaited(
+      repository.fetchReferenceData().catchError((_) {
+        return null;
+      }).whenComplete(() {
+        _isPrefetchingBookingData = false;
+      }),
+    );
   }
 
   @override

@@ -52,10 +52,21 @@ class BookingRepository {
   final http.Client _client;
 
   static BookingData? _cachedData;
+  static DateTime? _cachedDataAt;
+  static final Map<String, _CachedSlotsEntry> _cachedSlots = {};
+  static const Duration _referenceDataTtl = Duration(minutes: 5);
+  static const Duration _slotsTtl = Duration(minutes: 1);
 
   BookingData? get cachedData => _cachedData;
+  bool get hasFreshCachedData =>
+      _cachedData != null &&
+      _cachedDataAt != null &&
+      DateTime.now().difference(_cachedDataAt!) <= _referenceDataTtl;
 
-  Future<BookingData> fetchReferenceData() async {
+  Future<BookingData> fetchReferenceData({bool forceRefresh = false}) async {
+    if (!forceRefresh && hasFreshCachedData) {
+      return _cachedData!;
+    }
     final headers = await _authHeaders();
     try {
       final responses = await Future.wait([
@@ -87,6 +98,7 @@ class BookingRepository {
           .where((item) => item.isActive)
           .toList();
       _cachedData = BookingData(departments: departments, doctors: doctors);
+      _cachedDataAt = DateTime.now();
       return _cachedData!;
     } on SocketException {
       throw const BookingException('The backend is unreachable right now.');
@@ -99,7 +111,20 @@ class BookingRepository {
     required String departmentId,
     required String doctorId,
     required DateTime date,
+    bool forceRefresh = false,
   }) async {
+    final cacheKey = _slotCacheKey(
+      departmentId: departmentId,
+      doctorId: doctorId,
+      date: date,
+    );
+    if (!forceRefresh) {
+      final cached = _cachedSlots[cacheKey];
+      if (cached != null &&
+          DateTime.now().difference(cached.cachedAt) <= _slotsTtl) {
+        return cached.slots;
+      }
+    }
     try {
       final uri =
           Uri.parse(
@@ -115,11 +140,16 @@ class BookingRepository {
           .get(uri, headers: await _authHeaders())
           .timeout(const Duration(seconds: 12));
       if (response.statusCode == 200) {
-        return (jsonDecode(response.body) as List<dynamic>)
+        final slots = (jsonDecode(response.body) as List<dynamic>)
             .map(
               (item) => AvailabilitySlot.fromJson(item as Map<String, dynamic>),
             )
             .toList();
+        _cachedSlots[cacheKey] = _CachedSlotsEntry(
+          slots: slots,
+          cachedAt: DateTime.now(),
+        );
+        return slots;
       }
       throw BookingException(_backendMessage(response.body));
     } on SocketException {
@@ -217,6 +247,27 @@ class BookingRepository {
     }
     return 'We could not load booking data right now.';
   }
+
+  List<AvailabilitySlot>? cachedAvailableSlots({
+    required String departmentId,
+    required String doctorId,
+    required DateTime date,
+  }) {
+    final cacheKey = _slotCacheKey(
+      departmentId: departmentId,
+      doctorId: doctorId,
+      date: date,
+    );
+    return _cachedSlots[cacheKey]?.slots;
+  }
+
+  String _slotCacheKey({
+    required String departmentId,
+    required String doctorId,
+    required DateTime date,
+  }) {
+    return '$departmentId|$doctorId|${_date(date)}';
+  }
 }
 
 class BookingException implements Exception {
@@ -232,4 +283,14 @@ String _date(DateTime value) {
   return '${value.year.toString().padLeft(4, '0')}-'
       '${value.month.toString().padLeft(2, '0')}-'
       '${value.day.toString().padLeft(2, '0')}';
+}
+
+class _CachedSlotsEntry {
+  const _CachedSlotsEntry({
+    required this.slots,
+    required this.cachedAt,
+  });
+
+  final List<AvailabilitySlot> slots;
+  final DateTime cachedAt;
 }

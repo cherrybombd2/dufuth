@@ -44,7 +44,15 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     if (appointment != null) {
       _selectedDate = _dateOnly(appointment.startAt);
     }
-    _loadInitial();
+    final cachedData = ref.read(bookingRepositoryProvider).cachedData;
+    if (cachedData != null) {
+      _applyReferenceData(cachedData);
+      _isInitialLoading = false;
+      _prefillForReschedule();
+      unawaited(_refreshReferenceData());
+    } else {
+      _loadInitial();
+    }
     _slotRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       _refreshVisibleSlots(background: true);
     });
@@ -64,21 +72,27 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         .toList();
   }
 
+  void _applyReferenceData(BookingData data) {
+    _departments
+      ..clear()
+      ..addAll(data.departments);
+    _allDoctors
+      ..clear()
+      ..addAll(data.doctors);
+  }
+
   Future<void> _loadInitial() async {
     setState(() {
       _isInitialLoading = true;
       _error = null;
     });
     try {
-      final data = await ref.read(bookingRepositoryProvider).fetchReferenceData();
+      final data = await ref
+          .read(bookingRepositoryProvider)
+          .fetchReferenceData(forceRefresh: true);
       if (!mounted) return;
       setState(() {
-        _departments
-          ..clear()
-          ..addAll(data.departments);
-        _allDoctors
-          ..clear()
-          ..addAll(data.doctors);
+        _applyReferenceData(data);
         _isInitialLoading = false;
       });
       _prefillForReschedule();
@@ -100,15 +114,12 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     final oldDoctor = _selectedDoctor?.userId;
     final oldSlot = _selectedSlot?.id;
     try {
-      final data = await ref.read(bookingRepositoryProvider).fetchReferenceData();
+      final data = await ref
+          .read(bookingRepositoryProvider)
+          .fetchReferenceData(forceRefresh: true);
       if (!mounted) return;
       setState(() {
-        _departments
-          ..clear()
-          ..addAll(data.departments);
-        _allDoctors
-          ..clear()
-          ..addAll(data.doctors);
+        _applyReferenceData(data);
         _selectedDepartment = _firstWhereOrNull(
           _departments,
           (item) => item.name == oldDepartment,
@@ -124,7 +135,11 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
           _selectedSlot = null;
         }
       });
-      await _refreshVisibleSlots(background: true, preferredSlotId: oldSlot);
+      await _refreshVisibleSlots(
+        background: true,
+        preferredSlotId: oldSlot,
+        forceRefresh: true,
+      );
     } on BookingException catch (error) {
       if (!mounted) return;
       setState(() => _error = error.message);
@@ -171,19 +186,32 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   }
 
   void _selectDoctor(Doctor doctor) {
+    _hydrateCachedSlots(
+      departmentId: doctor.departmentId,
+      doctorId: doctor.userId,
+      date: _selectedDate,
+    );
     setState(() {
       _selectedDoctor = doctor;
       _selectedSlot = null;
-      _slots.clear();
     });
-    _refreshVisibleSlots();
+    unawaited(_refreshVisibleSlots());
   }
 
   Future<void> _selectDate(DateTime value) async {
+    final nextDate = _dateOnly(value);
+    final department = _selectedDepartment;
+    final doctor = _selectedDoctor;
+    if (department != null && doctor != null) {
+      _hydrateCachedSlots(
+        departmentId: department.name,
+        doctorId: doctor.userId,
+        date: nextDate,
+      );
+    }
     setState(() {
-      _selectedDate = _dateOnly(value);
+      _selectedDate = nextDate;
       _selectedSlot = null;
-      _slots.clear();
     });
     await _refreshVisibleSlots();
   }
@@ -204,6 +232,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   Future<void> _refreshVisibleSlots({
     bool background = false,
     String? preferredSlotId,
+    bool forceRefresh = false,
   }) async {
     final department = _selectedDepartment;
     final doctor = _selectedDoctor;
@@ -223,6 +252,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
             departmentId: department.name,
             doctorId: doctor.userId,
             date: _selectedDate,
+            forceRefresh: forceRefresh,
           );
       if (!mounted) return;
       setState(() {
@@ -245,6 +275,26 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         setState(() => _isLoadingSlots = false);
       }
     }
+  }
+
+  void _hydrateCachedSlots({
+    required String departmentId,
+    required String doctorId,
+    required DateTime date,
+  }) {
+    final cached = ref
+        .read(bookingRepositoryProvider)
+        .cachedAvailableSlots(
+          departmentId: departmentId,
+          doctorId: doctorId,
+          date: date,
+        );
+    if (cached == null) {
+      return;
+    }
+    _slots
+      ..clear()
+      ..addAll(cached);
   }
 
   Future<void> _submit() async {
@@ -961,6 +1011,38 @@ class _SlotSection extends StatelessWidget {
             message: 'Available appointment times will appear here after a doctor is selected.',
           )
         else if (isLoading)
+          if (slots.isNotEmpty) ...[
+            const _InlineLoadingIndicator(),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  for (final slot in slots)
+                    ChoiceChip(
+                      label: Text('${_time(slot.startAt)} - ${_time(slot.endAt)}'),
+                      selected: selectedSlot?.id == slot.id,
+                      selectedColor: const Color(0xFFDDEBFF),
+                      backgroundColor: Colors.white,
+                      checkmarkColor: _BookingColors.darkBlue,
+                      side: BorderSide(
+                        color: selectedSlot?.id == slot.id
+                            ? _BookingColors.blue
+                            : const Color(0xFFE4EBF5),
+                        width: selectedSlot?.id == slot.id ? 1.5 : 1,
+                      ),
+                      labelStyle: const TextStyle(
+                        color: _BookingColors.text,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      onSelected: (_) => onSelected(slot),
+                    ),
+                ],
+              ),
+            ),
+          ] else
           const _EmptyStateCard(
             icon: Icons.hourglass_top_rounded,
             title: 'Loading available slots',
@@ -1066,6 +1148,19 @@ class _HeaderRow extends StatelessWidget {
         ),
         ...?_optionalWidget(trailing),
       ],
+    );
+  }
+}
+
+class _InlineLoadingIndicator extends StatelessWidget {
+  const _InlineLoadingIndicator();
+
+  @override
+  Widget build(BuildContext context) {
+    return const LinearProgressIndicator(
+      minHeight: 3,
+      color: _BookingColors.blue,
+      backgroundColor: Color(0xFFDCE8FF),
     );
   }
 }
