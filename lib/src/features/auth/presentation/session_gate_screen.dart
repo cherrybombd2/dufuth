@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../application/app_session_provider.dart';
 import '../domain/app_session.dart';
 import '../../home/presentation/home_screen.dart';
+import 'account_state_screens.dart';
 import 'backend_unavailable_screen.dart';
 import 'profile_completion_screen.dart';
 import 'sign_in_screen.dart';
@@ -30,7 +31,10 @@ class SessionGateScreen extends ConsumerWidget {
           case AppSessionStatus.authenticated:
             return const HomeScreen();
           case AppSessionStatus.profileMissing:
-            return const ProfileCompletionScreen();
+            if (session.role == null || session.role == 'patient') {
+              return const ProfileCompletionScreen();
+            }
+            return InvalidRoleFallbackScreen(role: session.role);
           case AppSessionStatus.backendUnavailable:
             return BackendUnavailableScreen(
               message: session.message,

@@ -86,21 +86,24 @@ class AppSession {
     this.user,
     this.profile,
     this.message,
+    this.role,
   });
 
   const AppSession.loading()
       : status = AppSessionStatus.loading,
         user = null,
         profile = null,
-        message = null;
+        message = null,
+        role = null;
 
   const AppSession.signedOut()
       : status = AppSessionStatus.signedOut,
         user = null,
         profile = null,
-        message = null;
+        message = null,
+        role = null;
 
-  const AppSession.profileMissing({this.message})
+  const AppSession.profileMissing({this.message, this.role})
       : status = AppSessionStatus.profileMissing,
         user = null,
         profile = null;
@@ -108,17 +111,20 @@ class AppSession {
   const AppSession.backendUnavailable({this.message})
       : status = AppSessionStatus.backendUnavailable,
         user = null,
-        profile = null;
+        profile = null,
+        role = null;
 
   const AppSession.tokenExpired({this.message})
       : status = AppSessionStatus.tokenExpired,
         user = null,
-        profile = null;
+        profile = null,
+        role = null;
 
   final AppSessionStatus status;
   final SessionUser? user;
   final SessionProfile? profile;
   final String? message;
+  final String? role;
 
   bool get isAuthenticated => status == AppSessionStatus.authenticated;
 }

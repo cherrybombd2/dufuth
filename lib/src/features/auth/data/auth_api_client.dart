@@ -179,10 +179,14 @@ class AuthApiClient {
         return _parseSessionResponse(response.body);
       }
 
-      if (response.statusCode == 404 && response.body.contains('PROFILE_MISSING')) {
-        return const AppSession.profileMissing(
-          message: 'Your account exists, but your profile is missing.',
-        );
+      if (response.statusCode == 404) {
+        final missingProfile = _parseMissingProfileResponse(response.body);
+        if (missingProfile != null || response.body.contains('PROFILE_MISSING')) {
+          return AppSession.profileMissing(
+            message: 'Your account exists, but your profile is missing.',
+            role: missingProfile,
+          );
+        }
       }
 
       if (response.statusCode == 401) {
@@ -226,5 +230,28 @@ class AuthApiClient {
       // Fall back to a generic message.
     }
     return 'Backend request failed with status $statusCode.';
+  }
+
+  String? _parseMissingProfileResponse(String body) {
+    try {
+      final json = jsonDecode(body) as Map<String, dynamic>;
+      final detail = json['detail'];
+      if (detail is String && detail == 'PROFILE_MISSING') {
+        return null;
+      }
+      if (detail is Map<String, dynamic> && detail['code'] == 'PROFILE_MISSING') {
+        final role = detail['role'];
+        if (role is String && role.isNotEmpty) {
+          return role;
+        }
+        return null;
+      }
+    } catch (_) {
+      // Ignore parse errors and fall back.
+    }
+    if (body.contains('PROFILE_MISSING')) {
+      return null;
+    }
+    return null;
   }
 }

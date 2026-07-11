@@ -542,14 +542,7 @@ class _UpcomingAppointmentCardState
                 : Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      ClipOval(
-                        child: Image.asset(
-                          'assets/profile/boy_3d.png',
-                          width: 56,
-                          height: 56,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
+                      const _DoctorIconAvatar(size: 56),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Column(
@@ -638,6 +631,29 @@ class _EmptyUpcomingAppointment extends StatelessWidget {
           size: 28,
         ),
       ],
+    );
+  }
+}
+
+class _DoctorIconAvatar extends StatelessWidget {
+  const _DoctorIconAvatar({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        color: Color(0xFFEAF4FF),
+        shape: BoxShape.circle,
+      ),
+      padding: EdgeInsets.all(size * 0.16),
+      child: Image.asset(
+        'assets/admin/doctor_icon.png',
+        fit: BoxFit.contain,
+      ),
     );
   }
 }

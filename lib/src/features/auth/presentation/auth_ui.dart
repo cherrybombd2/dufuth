@@ -106,9 +106,10 @@ class AuthShell extends StatelessWidget {
     }
 
     return SafeArea(
-      child: Center(
-        child: SingleChildScrollView(
-          padding: padding,
+      child: SingleChildScrollView(
+        padding: padding,
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        child: Center(
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: maxWidth),
             child: child,

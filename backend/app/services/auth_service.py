@@ -63,7 +63,10 @@ class AuthService:
         if profile is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="PROFILE_MISSING",
+                detail={
+                    "code": "PROFILE_MISSING",
+                    "role": user.role.value,
+                },
             )
 
         return SessionResponse(

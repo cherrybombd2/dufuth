@@ -37,8 +37,11 @@ class AppLaunchGateScreen extends ConsumerWidget {
               case AppSessionStatus.signedOut:
               case AppSessionStatus.tokenExpired:
                 return const _RouteForwarderScreen(target: '/sign-in');
-              case AppSessionStatus.profileMissing:
-                return const _RouteForwarderScreen(target: '/complete-profile');
+          case AppSessionStatus.profileMissing:
+            if (session.role == null || session.role == 'patient') {
+              return const _RouteForwarderScreen(target: '/complete-profile');
+            }
+            return InvalidRoleFallbackScreen(role: session.role);
               case AppSessionStatus.backendUnavailable:
                 return BackendUnavailableScreen(message: session.message);
               case AppSessionStatus.authenticated:
@@ -81,7 +84,10 @@ class RoleProtectedScreen extends ConsumerWidget {
           case AppSessionStatus.tokenExpired:
             return const SignInScreen();
           case AppSessionStatus.profileMissing:
-            return const ProfileCompletionScreen();
+            if (session.role == null || session.role == 'patient') {
+              return const ProfileCompletionScreen();
+            }
+            return InvalidRoleFallbackScreen(role: session.role);
           case AppSessionStatus.backendUnavailable:
             return BackendUnavailableScreen(message: session.message);
           case AppSessionStatus.authenticated:
@@ -128,7 +134,10 @@ class MultiRoleProtectedScreen extends ConsumerWidget {
           case AppSessionStatus.tokenExpired:
             return const SignInScreen();
           case AppSessionStatus.profileMissing:
-            return const ProfileCompletionScreen();
+            if (session.role == null || session.role == 'patient') {
+              return const ProfileCompletionScreen();
+            }
+            return InvalidRoleFallbackScreen(role: session.role);
           case AppSessionStatus.backendUnavailable:
             return BackendUnavailableScreen(message: session.message);
           case AppSessionStatus.authenticated:

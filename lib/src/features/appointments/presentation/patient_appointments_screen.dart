@@ -206,7 +206,14 @@ class _PatientAppointmentsScreenState
                         ),
                       ),
                       FilledButton.icon(
-                        onPressed: () => context.push('/book-appointment'),
+                        onPressed: () async {
+                          final result = await context.push('/book-appointment');
+                          if (!mounted) return;
+                          if (result != null) {
+                            await _load(showRefresh: true);
+                            widget.onAppointmentsChanged?.call();
+                          }
+                        },
                         icon: const Icon(Icons.add_rounded),
                         label: const Text('Book'),
                         style: FilledButton.styleFrom(
@@ -240,7 +247,14 @@ class _PatientAppointmentsScreenState
                   if (visible.isEmpty)
                     _EmptyAppointmentsState(
                       history: _showHistory,
-                      onBook: () => context.push('/book-appointment'),
+                      onBook: () async {
+                        final result = await context.push('/book-appointment');
+                        if (!mounted) return;
+                        if (result != null) {
+                          await _load(showRefresh: true);
+                          widget.onAppointmentsChanged?.call();
+                        }
+                      },
                     )
                   else
                     for (final appointment in visible) ...[

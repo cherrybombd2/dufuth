@@ -382,13 +382,10 @@ class _NextReminderHero extends StatelessWidget {
                 const SizedBox(height: 14),
                 Row(
                   children: [
-                    GenderPortrait(
-                      gender: reminder.doctorGender,
+                    const _DoctorReminderAvatar(
                       width: 36,
                       height: 36,
-                      fallbackBackground: Colors.white24,
-                      fallbackColor: Colors.white,
-                      fallbackIconSize: 20,
+                      backgroundColor: Colors.white24,
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -469,13 +466,10 @@ class _ReminderCard extends StatelessWidget {
           const SizedBox(height: 16),
           Row(
             children: [
-              GenderPortrait(
-                gender: reminder.doctorGender,
+              const _DoctorReminderAvatar(
                 width: 44,
                 height: 44,
-                fallbackBackground: const Color(0xFFE8F0FF),
-                fallbackColor: _primaryBlue,
-                fallbackIconSize: 22,
+                backgroundColor: Color(0xFFE8F0FF),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -638,6 +632,36 @@ class GenderPortrait extends StatelessWidget {
         width: width,
         height: height,
         fit: BoxFit.cover,
+      ),
+    );
+  }
+}
+
+class _DoctorReminderAvatar extends StatelessWidget {
+  const _DoctorReminderAvatar({
+    required this.width,
+    required this.height,
+    required this.backgroundColor,
+  });
+
+  final double width;
+  final double height;
+  final Color backgroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final shortestSide = width < height ? width : height;
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        shape: BoxShape.circle,
+      ),
+      padding: EdgeInsets.all(shortestSide * 0.18),
+      child: Image.asset(
+        'assets/admin/doctor_icon.png',
+        fit: BoxFit.contain,
       ),
     );
   }
