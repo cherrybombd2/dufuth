@@ -74,6 +74,25 @@ class AvailabilitySlotRepository:
             return AvailabilitySlot.model_validate({"id": snapshot.id, **(snapshot.to_dict() or {})})
         return next((item for item in availability_slots if item.id == slot_id), None)
 
+    def get_many_by_ids(self, slot_ids: set[str]) -> dict[str, AvailabilitySlot]:
+        if not slot_ids:
+            return {}
+
+        settings = get_settings()
+        client = get_firestore_client()
+        if client is not None:
+            collection = client.collection(settings.firestore_availability_slots_collection)
+            snapshots = client.get_all([collection.document(slot_id) for slot_id in slot_ids])
+            return {
+                snapshot.id: AvailabilitySlot.model_validate(
+                    {"id": snapshot.id, **(snapshot.to_dict() or {})}
+                )
+                for snapshot in snapshots
+                if snapshot.exists
+            }
+
+        return {slot.id: slot for slot in availability_slots if slot.id in slot_ids}
+
     def save(self, slot: AvailabilitySlot) -> AvailabilitySlot:
         settings = get_settings()
         client = get_firestore_client()

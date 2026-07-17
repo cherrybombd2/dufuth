@@ -56,9 +56,25 @@ class AppointmentService:
         current_user: AuthenticatedUser,
     ) -> list[PatientAppointmentResponse]:
         self._require_patient(current_user)
+        patient_appointments = self.repository.list_by_patient(current_user.uid)
+        slots_by_id = {}
+        if self.slot_repository is not None:
+            slot_ids = {item.slot_id for item in patient_appointments if item.slot_id}
+            slots_by_id = self.slot_repository.get_many_by_ids(slot_ids)
+
+        doctor_ids = {item.doctor_id for item in patient_appointments}
+        doctors_by_id = {}
+        if self.doctor_repository is not None:
+            doctors_by_id = self.doctor_repository.get_many_by_ids(doctor_ids)
+
         return [
-            self._patient_response(item)
-            for item in self.repository.list_by_patient(current_user.uid)
+            self._patient_response(
+                item,
+                slot=slots_by_id.get(item.slot_id) if item.slot_id else None,
+                doctor=doctors_by_id.get(item.doctor_id),
+                lookup_related=False,
+            )
+            for item in patient_appointments
         ]
 
     def create_appointment(self, payload: AppointmentCreate) -> AppointmentResponse:
@@ -511,13 +527,18 @@ class AppointmentService:
             },
         )
 
-    def _patient_response(self, appointment) -> PatientAppointmentResponse:
-        slot = None
-        if appointment.slot_id and self.slot_repository is not None:
+    def _patient_response(
+        self,
+        appointment,
+        *,
+        slot=None,
+        doctor=None,
+        lookup_related: bool = True,
+    ) -> PatientAppointmentResponse:
+        if lookup_related and slot is None and appointment.slot_id and self.slot_repository is not None:
             slot = self.slot_repository.get(appointment.slot_id)
 
-        doctor = None
-        if self.doctor_repository is not None:
+        if lookup_related and doctor is None and self.doctor_repository is not None:
             doctor = self.doctor_repository.get_by_id(appointment.doctor_id)
 
         start_at = slot.start_at if slot is not None else appointment.scheduled_for

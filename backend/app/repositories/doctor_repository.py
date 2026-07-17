@@ -31,6 +31,27 @@ class DoctorRepository:
             return Doctor.model_validate({"user_id": snapshot.id, **(snapshot.to_dict() or {})})
         return next((doctor for doctor in doctors if doctor.user_id == doctor_id), None)
 
+    def get_many_by_ids(self, doctor_ids: set[str]) -> dict[str, Doctor]:
+        if not doctor_ids:
+            return {}
+
+        settings = get_settings()
+        client = get_firestore_client()
+        if client is not None:
+            collection = client.collection(settings.firestore_doctors_collection)
+            snapshots = client.get_all(
+                [collection.document(doctor_id) for doctor_id in doctor_ids]
+            )
+            return {
+                snapshot.id: Doctor.model_validate(
+                    {"user_id": snapshot.id, **(snapshot.to_dict() or {})}
+                )
+                for snapshot in snapshots
+                if snapshot.exists
+            }
+
+        return {doctor.user_id: doctor for doctor in doctors if doctor.user_id in doctor_ids}
+
     def upsert(self, payload: DoctorUpsert, linked_account_email: str | None = None) -> Doctor:
         doctor_id = payload.user_id or f"doctor_{uuid4().hex[:10]}"
         existing = self.get_by_id(doctor_id)
