@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, Query, status
 
 from app.api.dependencies import (
@@ -105,6 +107,7 @@ async def get_doctor_appointment_detail(
 @router.get("/{doctor_id}/schedule", response_model=DoctorScheduleResponse)
 async def get_doctor_schedule(
     doctor_id: str,
+    selected_date: date | None = None,
     service: DoctorService = Depends(get_doctor_service),
 ) -> DoctorScheduleResponse:
-    return service.get_schedule(doctor_id)
+    return service.get_schedule(doctor_id, selected_date=selected_date)

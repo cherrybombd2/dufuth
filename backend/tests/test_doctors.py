@@ -1,8 +1,12 @@
+from datetime import UTC, datetime, timedelta
+
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.models.appointment import Appointment, AppointmentStatus
 from app.models.common import UserRole
 from app.models.user import UserAccount
+from app.repositories.in_memory_store import appointments
 from app.repositories.user_repository import UserRepository
 
 client = TestClient(app)
@@ -65,3 +69,38 @@ def test_admin_can_search_existing_app_accounts_by_email() -> None:
     payload = response.json()
     assert payload[0]["email"] == "amina@example.com"
     assert payload[0]["full_name"] == "Amina Yusuf"
+
+
+def test_doctor_schedule_can_be_filtered_by_selected_date() -> None:
+    target_date_time = datetime.now(UTC) + timedelta(days=5)
+    other_date_time = target_date_time + timedelta(days=1)
+    appointments.extend(
+        [
+            Appointment(
+                id="doctor_schedule_target_date",
+                patient_id="patient_1",
+                doctor_id="doctor_1",
+                department="General Medicine",
+                scheduled_for=target_date_time,
+                status=AppointmentStatus.BOOKED,
+            ),
+            Appointment(
+                id="doctor_schedule_other_date",
+                patient_id="patient_1",
+                doctor_id="doctor_1",
+                department="General Medicine",
+                scheduled_for=other_date_time,
+                status=AppointmentStatus.BOOKED,
+            ),
+        ]
+    )
+
+    response = client.get(
+        "/api/v1/doctors/doctor_1/schedule",
+        params={"selected_date": target_date_time.date().isoformat()},
+    )
+
+    assert response.status_code == 200
+    appointment_ids = {item["id"] for item in response.json()["appointments"]}
+    assert "doctor_schedule_target_date" in appointment_ids
+    assert "doctor_schedule_other_date" not in appointment_ids

@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import HTTPException, status
 
 from app.models.common import UserRole
@@ -39,7 +41,12 @@ class DoctorService:
             for item in self.doctor_repository.list()
         ]
 
-    def get_schedule(self, doctor_id: str) -> DoctorScheduleResponse:
+    def get_schedule(
+        self,
+        doctor_id: str,
+        *,
+        selected_date: date | None = None,
+    ) -> DoctorScheduleResponse:
         doctor = self.doctor_repository.get_by_id(doctor_id)
         if doctor is None:
             raise HTTPException(
@@ -47,10 +54,25 @@ class DoctorService:
                 detail="Doctor not found",
             )
 
-        schedule = self.appointment_repository.list_by_doctor(doctor_id)
+        schedule = self.appointment_repository.list_by_doctor(
+            doctor_id,
+            selected_date=selected_date,
+        )
+        patients_by_id = {}
+        if self.patient_repository is not None:
+            patients_by_id = self.patient_repository.get_many_by_user_ids(
+                {item.patient_id for item in schedule}
+            )
         return DoctorScheduleResponse(
             doctor=DoctorSummary(**doctor.model_dump()),
-            appointments=[self._appointment_response(item) for item in schedule],
+            appointments=[
+                self._appointment_response(
+                    item,
+                    patient=patients_by_id.get(item.patient_id),
+                    lookup_patient=False,
+                )
+                for item in schedule
+            ],
         )
 
     def get_appointment_detail(
@@ -200,14 +222,20 @@ class DoctorService:
             return
         self.user_repository.upsert(user.model_copy(update={"role": UserRole.DOCTOR}))
 
-    def _appointment_response(self, appointment) -> AppointmentResponse:
+    def _appointment_response(
+        self,
+        appointment,
+        *,
+        patient=None,
+        lookup_patient: bool = True,
+    ) -> AppointmentResponse:
         patient_name = None
         patient_gender = None
-        if self.patient_repository is not None:
+        if lookup_patient and patient is None and self.patient_repository is not None:
             patient = self.patient_repository.get_by_user_id(appointment.patient_id)
-            if patient is not None:
-                patient_name = patient.full_name
-                patient_gender = patient.gender
+        if patient is not None:
+            patient_name = patient.full_name
+            patient_gender = patient.gender
         return AppointmentResponse.model_validate(
             {
                 **appointment.model_dump(mode="python"),

@@ -230,7 +230,10 @@ class DoctorWorkspaceRepository {
               'selected_date': dateKey,
             },
           );
-      final scheduleUri = Uri.parse('${AppConfig.backendBaseUrl}/doctors/$doctorId/schedule');
+      final scheduleUri =
+          Uri.parse('${AppConfig.backendBaseUrl}/doctors/$doctorId/schedule').replace(
+        queryParameters: {'selected_date': dateKey},
+      );
       final responses = await Future.wait([
         _client.get(slotUri, headers: headers).timeout(const Duration(seconds: 12)),
         _client.get(scheduleUri, headers: headers).timeout(const Duration(seconds: 12)),

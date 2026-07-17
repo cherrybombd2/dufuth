@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, time, timedelta
 from uuid import uuid4
 
 from app.core.config import get_settings
@@ -22,20 +22,36 @@ class AppointmentRepository:
             ]
         return appointments
 
-    def list_by_doctor(self, doctor_id: str) -> list[Appointment]:
+    def list_by_doctor(
+        self,
+        doctor_id: str,
+        *,
+        selected_date: date | None = None,
+    ) -> list[Appointment]:
         settings = get_settings()
         client = get_firestore_client()
         if client is not None:
             query = (
                 client.collection(settings.firestore_appointments_collection)
                 .where("doctor_id", "==", doctor_id)
-                .stream()
             )
+            if selected_date is not None:
+                start_at = datetime.combine(selected_date, time.min, tzinfo=UTC)
+                end_at = start_at + timedelta(days=1)
+                query = (
+                    query
+                    .where("scheduled_for", ">=", start_at)
+                    .where("scheduled_for", "<", end_at)
+                )
             return [
                 Appointment.model_validate({"id": item.id, **(item.to_dict() or {})})
-                for item in query
+                for item in query.stream()
             ]
-        return [item for item in appointments if item.doctor_id == doctor_id]
+
+        items = [item for item in appointments if item.doctor_id == doctor_id]
+        if selected_date is not None:
+            items = [item for item in items if item.scheduled_for.date() == selected_date]
+        return items
 
     def list_by_patient(self, patient_id: str) -> list[Appointment]:
         settings = get_settings()
