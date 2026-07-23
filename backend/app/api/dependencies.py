@@ -1,31 +1,33 @@
+from functools import lru_cache
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from functools import lru_cache
-
 from app.core.config import get_settings
 from app.core.firebase import verify_firebase_token
-from app.repositories.device_token_repository import DeviceTokenRepository
 from app.repositories.admin_repository import AdminRepository
+from app.repositories.app_version_repository import AppVersionRepository
 from app.repositories.appointment_repository import AppointmentRepository
 from app.repositories.availability_slot_repository import AvailabilitySlotRepository
 from app.repositories.department_repository import DepartmentRepository
-from app.repositories.doctor_repository import DoctorRepository
+from app.repositories.device_token_repository import DeviceTokenRepository
 from app.repositories.doctor_alert_repository import DoctorAlertRepository
+from app.repositories.doctor_repository import DoctorRepository
 from app.repositories.faq_repository import FaqRepository
 from app.repositories.hospital_info_repository import HospitalInfoRepository
 from app.repositories.patient_repository import PatientRepository
 from app.repositories.reminder_repository import ReminderRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import AuthenticatedUser
-from app.services.auth_service import AuthService
 from app.services.admin_service import AdminService
+from app.services.app_version_service import AppVersionService
 from app.services.appointment_service import AppointmentService
+from app.services.auth_service import AuthService
 from app.services.availability_slot_service import AvailabilitySlotService
-from app.services.device_token_service import DeviceTokenService
 from app.services.department_service import DepartmentService
-from app.services.doctor_service import DoctorService
+from app.services.device_token_service import DeviceTokenService
 from app.services.doctor_alert_service import DoctorAlertService
+from app.services.doctor_service import DoctorService
 from app.services.faq_service import FaqService
 from app.services.hospital_info_service import HospitalInfoService
 from app.services.messaging_service import MessagingService
@@ -73,6 +75,11 @@ def get_appointment_service() -> AppointmentService:
         doctor_alert_repository=DoctorAlertRepository(),
         messaging_service=get_messaging_service(),
     )
+
+
+@lru_cache
+def get_app_version_service() -> AppVersionService:
+    return AppVersionService(repository=AppVersionRepository())
 
 
 @lru_cache

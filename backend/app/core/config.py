@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     firestore_faq_items_collection: str = "faq_items"
     firestore_reminders_collection: str = "reminders"
     firestore_doctor_alerts_collection: str = "doctor_alerts"
+    app_minimum_required_version: str = "1.0.0"
+    app_latest_version: str = "1.0.0"
+    app_force_update: bool = False
+    app_update_download_url: str = "https://dufuth-smartcare-download.netlify.app/"
+    app_update_message: str = "Please update DUFUTH SmartCare to continue."
 
     model_config = SettingsConfigDict(
         env_file=".env",

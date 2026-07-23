@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/app_update/application/app_update_provider.dart';
+import '../features/app_update/presentation/forced_update_screen.dart';
 import '../features/auth/application/app_session_provider.dart';
 import '../features/auth/domain/app_session.dart';
 import '../features/auth/presentation/account_state_screens.dart';
@@ -12,6 +14,15 @@ import '../features/onboarding/application/onboarding_preferences.dart';
 
 class AppLaunchGateScreen extends ConsumerWidget {
   const AppLaunchGateScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return const AppUpdateGate(child: _AppLaunchGateBody());
+  }
+}
+
+class _AppLaunchGateBody extends ConsumerWidget {
+  const _AppLaunchGateBody();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -37,11 +48,13 @@ class AppLaunchGateScreen extends ConsumerWidget {
               case AppSessionStatus.signedOut:
               case AppSessionStatus.tokenExpired:
                 return const _RouteForwarderScreen(target: '/sign-in');
-          case AppSessionStatus.profileMissing:
-            if (session.role == null || session.role == 'patient') {
-              return const _RouteForwarderScreen(target: '/complete-profile');
-            }
-            return InvalidRoleFallbackScreen(role: session.role);
+              case AppSessionStatus.profileMissing:
+                if (session.role == null || session.role == 'patient') {
+                  return const _RouteForwarderScreen(
+                    target: '/complete-profile',
+                  );
+                }
+                return InvalidRoleFallbackScreen(role: session.role);
               case AppSessionStatus.backendUnavailable:
                 return BackendUnavailableScreen(message: session.message);
               case AppSessionStatus.authenticated:
@@ -64,6 +77,26 @@ class RoleProtectedScreen extends ConsumerWidget {
     required this.requiredRole,
     required this.child,
     super.key,
+  });
+
+  final String requiredRole;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return AppUpdateGate(
+      child: _RoleProtectedBody(
+        requiredRole: requiredRole,
+        child: child,
+      ),
+    );
+  }
+}
+
+class _RoleProtectedBody extends ConsumerWidget {
+  const _RoleProtectedBody({
+    required this.requiredRole,
+    required this.child,
   });
 
   final String requiredRole;
@@ -121,6 +154,26 @@ class MultiRoleProtectedScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    return AppUpdateGate(
+      child: _MultiRoleProtectedBody(
+        allowedRoles: allowedRoles,
+        child: child,
+      ),
+    );
+  }
+}
+
+class _MultiRoleProtectedBody extends ConsumerWidget {
+  const _MultiRoleProtectedBody({
+    required this.allowedRoles,
+    required this.child,
+  });
+
+  final Set<String> allowedRoles;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final sessionAsync = ref.watch(appSessionProvider);
 
     return sessionAsync.when(
@@ -154,6 +207,31 @@ class MultiRoleProtectedScreen extends ConsumerWidget {
             }
             return child;
         }
+      },
+    );
+  }
+}
+
+class AppUpdateGate extends ConsumerWidget {
+  const AppUpdateGate({
+    required this.child,
+    super.key,
+  });
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final updateAsync = ref.watch(appUpdateGateProvider);
+
+    return updateAsync.when(
+      loading: () => const AccountBootstrapScreen(),
+      error: (_, _) => child,
+      data: (result) {
+        if (result.isUpdateRequired) {
+          return ForcedUpdateScreen(result: result);
+        }
+        return child;
       },
     );
   }
