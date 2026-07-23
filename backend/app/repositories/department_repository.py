@@ -27,7 +27,13 @@ class DepartmentRepository:
         settings = get_settings()
         client = get_firestore_client()
         if client is not None:
-            snapshot = client.collection(settings.firestore_departments_collection).document(name).get()
+            collection = client.collection(settings.firestore_departments_collection)
+            snapshot = collection.document(name).get()
+            if not snapshot.exists:
+                matches = collection.where("name", "==", name).limit(1).stream()
+                snapshot = next(matches, None)
+                if snapshot is None:
+                    return None
             if not snapshot.exists:
                 return None
             return Department.model_validate({"name": snapshot.id, **(snapshot.to_dict() or {})})

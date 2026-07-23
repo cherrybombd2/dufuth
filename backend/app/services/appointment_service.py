@@ -562,6 +562,7 @@ class AppointmentService:
             patient_id=appointment.patient_id,
             doctor_id=appointment.doctor_id,
             doctor_name=doctor_name,
+            doctor_gender=doctor.gender if doctor is not None else None,
             department_id=department_id,
             department_name=department_name,
             start_at=start_at,

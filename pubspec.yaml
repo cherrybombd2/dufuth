@@ -30,6 +30,7 @@ flutter:
     - assets/admin/
     - assets/auth/
     - assets/branding/
+    - assets/departments/
     - assets/doctor_nav/
     - assets/hospital_info/
     - assets/home/

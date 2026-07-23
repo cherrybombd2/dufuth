@@ -382,7 +382,8 @@ class _NextReminderHero extends StatelessWidget {
                 const SizedBox(height: 14),
                 Row(
                   children: [
-                    const _DoctorReminderAvatar(
+                    _DoctorReminderAvatar(
+                      gender: reminder.doctorGender,
                       width: 36,
                       height: 36,
                       backgroundColor: Colors.white24,
@@ -466,7 +467,8 @@ class _ReminderCard extends StatelessWidget {
           const SizedBox(height: 16),
           Row(
             children: [
-              const _DoctorReminderAvatar(
+              _DoctorReminderAvatar(
+                gender: reminder.doctorGender,
                 width: 44,
                 height: 44,
                 backgroundColor: Color(0xFFE8F0FF),
@@ -639,11 +641,13 @@ class GenderPortrait extends StatelessWidget {
 
 class _DoctorReminderAvatar extends StatelessWidget {
   const _DoctorReminderAvatar({
+    required this.gender,
     required this.width,
     required this.height,
     required this.backgroundColor,
   });
 
+  final String? gender;
   final double width;
   final double height;
   final Color backgroundColor;
@@ -651,6 +655,10 @@ class _DoctorReminderAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final shortestSide = width < height ? width : height;
+    final normalized = gender?.trim().toLowerCase();
+    final assetPath = normalized == 'female'
+        ? 'assets/admin/female_doctor_icon.png'
+        : 'assets/admin/doctor_icon.png';
     return Container(
       width: width,
       height: height,
@@ -660,7 +668,7 @@ class _DoctorReminderAvatar extends StatelessWidget {
       ),
       padding: EdgeInsets.all(shortestSide * 0.18),
       child: Image.asset(
-        'assets/admin/doctor_icon.png',
+        assetPath,
         fit: BoxFit.contain,
       ),
     );

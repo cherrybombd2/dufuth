@@ -31,12 +31,14 @@ class _PatientWorkspaceScreenState
   int _appointmentRefreshToken = 0;
   int _appointmentsTabRefreshToken = 0;
   bool _isPrefetchingBookingData = false;
+  bool _isPrefetchingAppointments = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _prefetchBookingReferenceData();
+      _prefetchAppointments();
     });
   }
 
@@ -49,9 +51,9 @@ class _PatientWorkspaceScreenState
 
   void _openAppointmentsTab() {
     _prefetchBookingReferenceData();
+    _prefetchAppointments();
     setState(() {
       _currentIndex = 1;
-      _appointmentsTabRefreshToken++;
     });
   }
 
@@ -64,13 +66,41 @@ class _PatientWorkspaceScreenState
       return;
     }
     _isPrefetchingBookingData = true;
-    unawaited(
-      repository.fetchReferenceData().catchError((_) {
-        return null;
-      }).whenComplete(() {
-        _isPrefetchingBookingData = false;
-      }),
-    );
+    unawaited(_runBookingReferencePrefetch(repository));
+  }
+
+  Future<void> _runBookingReferencePrefetch(BookingRepository repository) async {
+    try {
+      await repository.fetchReferenceData();
+    } catch (_) {
+      // Ignore background prefetch failures. The booking screen will handle them.
+    } finally {
+      _isPrefetchingBookingData = false;
+    }
+  }
+
+  void _prefetchAppointments() {
+    if (_isPrefetchingAppointments) {
+      return;
+    }
+    final repository = ref.read(patientAppointmentsRepositoryProvider);
+    if (repository.hasFreshCachedAppointments) {
+      return;
+    }
+    _isPrefetchingAppointments = true;
+    unawaited(_runAppointmentsPrefetch(repository));
+  }
+
+  Future<void> _runAppointmentsPrefetch(
+    PatientAppointmentsRepository repository,
+  ) async {
+    try {
+      await repository.fetchAppointments();
+    } catch (_) {
+      // Ignore background prefetch failures. The appointments tab handles them.
+    } finally {
+      _isPrefetchingAppointments = false;
+    }
   }
 
   @override
@@ -573,7 +603,10 @@ class _UpcomingAppointmentCardState
                 : Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const _DoctorIconAvatar(size: 56),
+                      _DoctorIconAvatar(
+                        size: 56,
+                        gender: appointment.doctorGender,
+                      ),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Column(
@@ -667,12 +700,17 @@ class _EmptyUpcomingAppointment extends StatelessWidget {
 }
 
 class _DoctorIconAvatar extends StatelessWidget {
-  const _DoctorIconAvatar({required this.size});
+  const _DoctorIconAvatar({required this.size, this.gender});
 
   final double size;
+  final String? gender;
 
   @override
   Widget build(BuildContext context) {
+    final normalized = gender?.toLowerCase();
+    final assetPath = normalized == 'female'
+        ? 'assets/admin/female_doctor_icon.png'
+        : 'assets/admin/doctor_icon.png';
     return Container(
       width: size,
       height: size,
@@ -682,8 +720,13 @@ class _DoctorIconAvatar extends StatelessWidget {
       ),
       padding: EdgeInsets.all(size * 0.16),
       child: Image.asset(
-        'assets/admin/doctor_icon.png',
+        assetPath,
         fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => Icon(
+          Icons.medical_services_rounded,
+          color: const Color(0xFF2C7DF7),
+          size: size * 0.52,
+        ),
       ),
     );
   }

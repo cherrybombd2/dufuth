@@ -51,10 +51,15 @@ class _PatientAppointmentsScreenState
   @override
   void initState() {
     super.initState();
-    final cached = ref.read(patientAppointmentsRepositoryProvider).cachedAppointments;
+    final repository = ref.read(patientAppointmentsRepositoryProvider);
+    final cached = repository.cachedAppointments;
     _appointments = cached;
     _loading = cached == null;
-    _load(showRefresh: cached != null);
+    if (cached == null) {
+      _load();
+    } else if (!repository.hasFreshCachedAppointments) {
+      unawaited(_load(showRefresh: true, forceRefresh: true));
+    }
     _expiryTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) setState(() {});
     });
@@ -64,7 +69,7 @@ class _PatientAppointmentsScreenState
   void didUpdateWidget(covariant PatientAppointmentsScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.refreshToken != widget.refreshToken) {
-      _load(showRefresh: _appointments != null);
+      _load(showRefresh: _appointments != null, forceRefresh: true);
     }
   }
 
@@ -75,7 +80,10 @@ class _PatientAppointmentsScreenState
     super.dispose();
   }
 
-  Future<void> _load({bool showRefresh = false}) async {
+  Future<void> _load({
+    bool showRefresh = false,
+    bool forceRefresh = false,
+  }) async {
     setState(() {
       _error = null;
       _refreshing = showRefresh;
@@ -83,8 +91,9 @@ class _PatientAppointmentsScreenState
     });
 
     try {
-      final appointments =
-          await ref.read(patientAppointmentsRepositoryProvider).fetchAppointments();
+      final appointments = await ref
+          .read(patientAppointmentsRepositoryProvider)
+          .fetchAppointments(forceRefresh: forceRefresh);
       if (!mounted) return;
       setState(() => _appointments = appointments);
     } catch (error) {
@@ -120,7 +129,7 @@ class _PatientAppointmentsScreenState
       await ref
           .read(patientAppointmentsRepositoryProvider)
           .cancelAppointment(appointment.id);
-      await _load(showRefresh: true);
+      await _load(showRefresh: true, forceRefresh: true);
       widget.onAppointmentsChanged?.call();
     } catch (error) {
       if (!mounted) return;
@@ -141,11 +150,15 @@ class _PatientAppointmentsScreenState
       extra: appointment.toBookingAppointment(),
     );
     if (!mounted) return;
-    await _load(showRefresh: true);
-    widget.onAppointmentsChanged?.call();
     if (result != null) {
-      setState(() => _showMessage('Appointment rescheduled successfully.'));
+      _refreshAfterAppointmentChange('Appointment rescheduled successfully.');
     }
+  }
+
+  void _refreshAfterAppointmentChange(String message) {
+    setState(() => _showMessage(message));
+    widget.onAppointmentsChanged?.call();
+    unawaited(_load(showRefresh: true, forceRefresh: true));
   }
 
   void _showMessage(String message, {bool isError = false}) {
@@ -174,13 +187,16 @@ class _PatientAppointmentsScreenState
               return const Center(child: CircularProgressIndicator());
             }
             if (_error != null && appointments == null) {
-              return _FullErrorState(message: _error!, onRetry: () => _load());
+              return _FullErrorState(
+                message: _error!,
+                onRetry: () => _load(forceRefresh: true),
+              );
             }
 
             final visible = _visibleAppointments(appointments ?? []);
 
             return RefreshIndicator(
-              onRefresh: () => _load(showRefresh: true),
+              onRefresh: () => _load(showRefresh: true, forceRefresh: true),
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
@@ -210,8 +226,9 @@ class _PatientAppointmentsScreenState
                           final result = await context.push('/book-appointment');
                           if (!mounted) return;
                           if (result != null) {
-                            await _load(showRefresh: true);
-                            widget.onAppointmentsChanged?.call();
+                            _refreshAfterAppointmentChange(
+                              'Appointment booked successfully.',
+                            );
                           }
                         },
                         icon: const Icon(Icons.add_rounded),
@@ -251,8 +268,9 @@ class _PatientAppointmentsScreenState
                         final result = await context.push('/book-appointment');
                         if (!mounted) return;
                         if (result != null) {
-                          await _load(showRefresh: true);
-                          widget.onAppointmentsChanged?.call();
+                          _refreshAfterAppointmentChange(
+                            'Appointment booked successfully.',
+                          );
                         }
                       },
                     )

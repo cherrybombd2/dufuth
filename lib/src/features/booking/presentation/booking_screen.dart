@@ -306,7 +306,8 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     }
     if (slot.startAt.isBefore(DateTime.now())) {
       setState(() {
-        _error = 'This time slot has already passed. Please choose a later time.';
+        _error =
+            'This time slot has already passed. Please choose a later time.';
       });
       return;
     }
@@ -356,7 +357,9 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     return Scaffold(
       backgroundColor: _BookingColors.background,
       appBar: AppBar(
-        title: Text(widget.isReschedule ? 'Reschedule Appointment' : 'Book Appointment'),
+        title: Text(
+          widget.isReschedule ? 'Reschedule Appointment' : 'Book Appointment',
+        ),
         backgroundColor: _BookingColors.background,
         foregroundColor: _BookingColors.darkBlue,
         elevation: 0,
@@ -400,7 +403,8 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                     _DepartmentSection(
                       departments: _departments,
                       selectedDepartment: _selectedDepartment,
-                      lockedDepartmentId: widget.currentAppointment?.departmentId,
+                      lockedDepartmentId:
+                          widget.currentAppointment?.departmentId,
                       onSelected: _selectDepartment,
                     ),
                     const SizedBox(height: 24),
@@ -418,7 +422,8 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                       selectedDoctor: _selectedDoctor,
                       selectedSlot: _selectedSlot,
                       isLoading: _isLoadingSlots,
-                      onSelected: (slot) => setState(() => _selectedSlot = slot),
+                      onSelected: (slot) =>
+                          setState(() => _selectedSlot = slot),
                     ),
                     if (_selectedDepartment != null &&
                         _selectedDoctor != null &&
@@ -459,7 +464,9 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                         ),
                         child: Text(
                           _isSubmitting
-                              ? (widget.isReschedule ? 'Rescheduling...' : 'Confirming...')
+                              ? (widget.isReschedule
+                                    ? 'Rescheduling...'
+                                    : 'Confirming...')
                               : (widget.isReschedule
                                     ? 'Confirm Reschedule'
                                     : 'Confirm Appointment'),
@@ -582,7 +589,10 @@ class _DateSelectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dates = List.generate(5, (index) => _today().add(Duration(days: index)));
+    final dates = List.generate(
+      5,
+      (index) => _today().add(Duration(days: index)),
+    );
     return _WhiteCard(
       padding: const EdgeInsets.all(14),
       child: Column(
@@ -647,7 +657,8 @@ class _DepartmentSection extends StatelessWidget {
       return const _EmptyStateCard(
         icon: Icons.apartment_rounded,
         title: 'No departments yet',
-        message: 'Seed or create department records in Firestore to start booking.',
+        message:
+            'Seed or create department records in Firestore to start booking.',
       );
     }
     return Wrap(
@@ -658,7 +669,9 @@ class _DepartmentSection extends StatelessWidget {
           _DepartmentCard(
             department: department,
             selected: selectedDepartment?.name == department.name,
-            locked: lockedDepartmentId != null && lockedDepartmentId != department.name,
+            locked:
+                lockedDepartmentId != null &&
+                lockedDepartmentId != department.name,
             onTap: () => onSelected(department),
           ),
       ],
@@ -742,7 +755,11 @@ class _DepartmentCard extends StatelessWidget {
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.lock_rounded, size: 12, color: _BookingColors.muted),
+                    Icon(
+                      Icons.lock_rounded,
+                      size: 12,
+                      color: _BookingColors.muted,
+                    ),
                     SizedBox(width: 4),
                     Text(
                       'Same dept only',
@@ -780,13 +797,9 @@ class _DepartmentIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final path = switch (department.iconKey) {
-      'favorite' || 'cardiology' => 'assets/departments/cardiology.png',
-      'child_care' || 'pediatrics' => 'assets/departments/pediatrics.png',
-      'gynaecology' => 'assets/departments/gynaecology.png',
-      'medical_services' || 'general_medicine' => 'assets/departments/general_medicine.png',
-      _ => null,
-    };
+    final iconKey = _normalizeDepartmentToken(department.iconKey);
+    final departmentName = _normalizeDepartmentToken(department.name);
+    final path = _assetPathFor(iconKey, departmentName);
     if (path != null) {
       return Opacity(
         opacity: disabled ? 0.55 : 1,
@@ -803,13 +816,53 @@ class _DepartmentIcon extends StatelessWidget {
   }
 
   Widget _fallbackIcon() {
-    final icon = switch (department.iconKey) {
+    final icon = switch (_normalizeDepartmentToken(department.iconKey)) {
       'favorite' => Icons.favorite_rounded,
       'child_care' => Icons.child_care_rounded,
       'medical_services' => Icons.medical_services_rounded,
+      'o_g' ||
+      'obgyn' ||
+      'gynaecology' ||
+      'gynecology' => Icons.pregnant_woman_rounded,
       _ => Icons.local_hospital_rounded,
     };
     return Icon(icon, color: _BookingColors.blue, size: 32);
+  }
+
+  String? _assetPathFor(String iconKey, String departmentName) {
+    if (iconKey == 'favorite' ||
+        iconKey == 'cardiology' ||
+        departmentName == 'cardiology') {
+      return 'assets/departments/cardiology.png';
+    }
+    if (iconKey == 'child_care' ||
+        iconKey == 'pediatrics' ||
+        departmentName == 'pediatrics') {
+      return 'assets/departments/pediatrics.png';
+    }
+    if (iconKey == 'o_g' ||
+        iconKey == 'obgyn' ||
+        iconKey == 'gynaecology' ||
+        iconKey == 'gynecology' ||
+        departmentName == 'obgyn') {
+      return 'assets/departments/gynaecology.png';
+    }
+    if (iconKey == 'medical_services' ||
+        iconKey == 'general_medicine' ||
+        departmentName == 'general_medicine') {
+      return 'assets/departments/general_medicine.png';
+    }
+    return null;
+  }
+
+  String _normalizeDepartmentToken(String? value) {
+    return (value ?? '')
+        .trim()
+        .toLowerCase()
+        .replaceAll('&', '_')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_|_$'), '');
   }
 }
 
@@ -853,7 +906,8 @@ class _DoctorSection extends StatelessWidget {
           const _EmptyStateCard(
             icon: Icons.person_search_rounded,
             title: 'No doctors available',
-            message: 'There are no active doctors assigned to this department yet.',
+            message:
+                'There are no active doctors assigned to this department yet.',
           )
         else
           ...doctors.map(
@@ -954,20 +1008,23 @@ class _DoctorPortrait extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final normalized = gender?.toLowerCase();
-    final path = normalized == 'male'
-        ? 'assets/profile/boy_3d.png'
-        : normalized == 'female'
-        ? 'assets/profile/girl_3d.png'
-        : null;
-    if (path == null) {
-      return const CircleAvatar(
+    final path = normalized == 'female'
+        ? 'assets/admin/female_doctor_icon.png'
+        : 'assets/admin/doctor_icon.png';
+    return Image.asset(
+      path,
+      width: 48,
+      height: 48,
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) => const CircleAvatar(
         radius: 24,
         backgroundColor: Color(0xFFE6F0FF),
-        child: Icon(Icons.person_rounded, color: _BookingColors.blue, size: 24),
-      );
-    }
-    return ClipOval(
-      child: Image.asset(path, width: 48, height: 48, fit: BoxFit.cover),
+        child: Icon(
+          Icons.medical_services_rounded,
+          color: _BookingColors.blue,
+          size: 24,
+        ),
+      ),
     );
   }
 }
@@ -1008,7 +1065,8 @@ class _SlotSection extends StatelessWidget {
           const _EmptyStateCard(
             icon: Icons.schedule_rounded,
             title: 'Pick a doctor first',
-            message: 'Available appointment times will appear here after a doctor is selected.',
+            message:
+                'Available appointment times will appear here after a doctor is selected.',
           )
         else if (isLoading)
           if (slots.isNotEmpty) ...[
@@ -1022,7 +1080,9 @@ class _SlotSection extends StatelessWidget {
                 children: [
                   for (final slot in slots)
                     ChoiceChip(
-                      label: Text('${_time(slot.startAt)} - ${_time(slot.endAt)}'),
+                      label: Text(
+                        '${_time(slot.startAt)} - ${_time(slot.endAt)}',
+                      ),
                       selected: selectedSlot?.id == slot.id,
                       selectedColor: const Color(0xFFDDEBFF),
                       backgroundColor: Colors.white,
@@ -1043,16 +1103,17 @@ class _SlotSection extends StatelessWidget {
               ),
             ),
           ] else
-          const _EmptyStateCard(
-            icon: Icons.hourglass_top_rounded,
-            title: 'Loading available slots',
-            message: 'Checking open appointment times for this doctor.',
-          )
+            const _EmptyStateCard(
+              icon: Icons.hourglass_top_rounded,
+              title: 'Loading available slots',
+              message: 'Checking open appointment times for this doctor.',
+            )
         else if (slots.isEmpty)
           const _EmptyStateCard(
             icon: Icons.event_busy_rounded,
             title: 'No open slots',
-            message: 'Try another date or doctor to see more appointment times.',
+            message:
+                'Try another date or doctor to see more appointment times.',
           )
         else
           Align(
@@ -1063,7 +1124,9 @@ class _SlotSection extends StatelessWidget {
               children: [
                 for (final slot in slots)
                   ChoiceChip(
-                    label: Text('${_time(slot.startAt)} - ${_time(slot.endAt)}'),
+                    label: Text(
+                      '${_time(slot.startAt)} - ${_time(slot.endAt)}',
+                    ),
                     selected: selectedSlot?.id == slot.id,
                     selectedColor: const Color(0xFFDDEBFF),
                     backgroundColor: Colors.white,
@@ -1113,7 +1176,9 @@ class _AppointmentSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _CardTitle(isReschedule ? 'New Appointment Summary' : 'Appointment Summary'),
+          _CardTitle(
+            isReschedule ? 'New Appointment Summary' : 'Appointment Summary',
+          ),
           const SizedBox(height: 8),
           Text(
             '${department.name} - ${doctor.fullName}',
@@ -1143,9 +1208,7 @@ class _HeaderRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(
-          child: _SectionTitle(title: title),
-        ),
+        Expanded(child: _SectionTitle(title: title)),
         ...?_optionalWidget(trailing),
       ],
     );

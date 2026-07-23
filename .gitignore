@@ -54,3 +54,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local document tooling and render previews
+.tools/
+docs/_*/
+docs/_lo_smoke_test.docx

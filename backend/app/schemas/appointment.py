@@ -48,6 +48,7 @@ class PatientAppointmentResponse(BaseModel):
     patient_id: str
     doctor_id: str
     doctor_name: str
+    doctor_gender: str | None = None
     department_id: str
     department_name: str
     start_at: datetime

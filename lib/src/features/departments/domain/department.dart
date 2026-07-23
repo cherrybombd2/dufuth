@@ -10,8 +10,8 @@ class Department {
     return Department(
       name: json['name'] as String? ?? '',
       description: json['description'] as String?,
-      iconKey: json['icon_key'] as String?,
-      isActive: json['is_active'] as bool? ?? true,
+      iconKey: json['icon_key'] as String? ?? json['icon'] as String?,
+      isActive: json['is_active'] as bool? ?? json['isActive'] as bool? ?? true,
     );
   }
 

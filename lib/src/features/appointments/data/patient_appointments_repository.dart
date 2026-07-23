@@ -21,6 +21,7 @@ class PatientAppointment {
     required this.patientId,
     required this.doctorId,
     required this.doctorName,
+    this.doctorGender,
     required this.departmentId,
     required this.departmentName,
     required this.startAt,
@@ -35,6 +36,7 @@ class PatientAppointment {
       patientId: json['patient_id'] as String? ?? '',
       doctorId: json['doctor_id'] as String? ?? '',
       doctorName: json['doctor_name'] as String? ?? 'Doctor',
+      doctorGender: json['doctor_gender'] as String?,
       departmentId: json['department_id'] as String? ?? '',
       departmentName: json['department_name'] as String? ?? '',
       startAt: DateTime.parse(json['start_at'] as String).toLocal(),
@@ -48,6 +50,7 @@ class PatientAppointment {
   final String patientId;
   final String doctorId;
   final String doctorName;
+  final String? doctorGender;
   final String departmentId;
   final String departmentName;
   final DateTime startAt;
@@ -67,6 +70,7 @@ class PatientAppointment {
       patientId: patientId,
       doctorId: doctorId,
       doctorName: doctorName,
+      doctorGender: doctorGender,
       departmentId: departmentId,
       departmentName: departmentName,
       startAt: startAt,
@@ -98,10 +102,37 @@ class PatientAppointmentsRepository {
   final http.Client _client;
 
   static List<PatientAppointment>? _cachedAppointments;
+  static DateTime? _cachedAppointmentsAt;
+  static Future<List<PatientAppointment>>? _inFlightFetch;
+  static const Duration _appointmentsTtl = Duration(seconds: 45);
 
   List<PatientAppointment>? get cachedAppointments => _cachedAppointments;
+  bool get hasFreshCachedAppointments =>
+      _cachedAppointments != null &&
+      _cachedAppointmentsAt != null &&
+      DateTime.now().difference(_cachedAppointmentsAt!) <= _appointmentsTtl;
 
-  Future<List<PatientAppointment>> fetchAppointments() async {
+  Future<List<PatientAppointment>> fetchAppointments({
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh && _inFlightFetch != null) {
+      return _inFlightFetch!;
+    }
+    if (!forceRefresh && hasFreshCachedAppointments) {
+      return _cachedAppointments!;
+    }
+    final request = _fetchAppointmentsFromNetwork();
+    _inFlightFetch = request;
+    try {
+      return await request;
+    } finally {
+      if (identical(_inFlightFetch, request)) {
+        _inFlightFetch = null;
+      }
+    }
+  }
+
+  Future<List<PatientAppointment>> _fetchAppointmentsFromNetwork() async {
     try {
       final response = await _client
           .get(
@@ -114,6 +145,7 @@ class PatientAppointmentsRepository {
             .map((item) => PatientAppointment.fromJson(item as Map<String, dynamic>))
             .toList();
         _cachedAppointments = appointments;
+        _cachedAppointmentsAt = DateTime.now();
         return appointments;
       }
       throw PatientAppointmentsException(_backendMessage(response.body));
@@ -145,6 +177,7 @@ class PatientAppointmentsRepository {
         _cachedAppointments = _cachedAppointments
             ?.map((item) => item.id == appointment.id ? appointment : item)
             .toList();
+        _cachedAppointmentsAt = DateTime.now();
         return appointment;
       }
       throw PatientAppointmentsException(_backendMessage(response.body));
